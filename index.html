@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Закладки</title>
+    <!-- Критические стили для скелетона -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f5f5f7;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .main-layout {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .folders-panel {
+            width: 280px;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+        .right-panel {
+            flex: 1;
+            min-width: 0;
+        }
+        .skeleton-grid {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+            gap: 20px;
+        }
+        .skeleton-card {
+            background: #ddd;
+            border-radius: 14px;
+            height: 60px;
+            opacity: 0.5;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .skeleton-grid[data-size="compact"] .skeleton-card { height: 44px; }
+        .skeleton-grid[data-size="standard"] .skeleton-card { height: 60px; }
+        .skeleton-grid[data-size="large"] .skeleton-card { height: 80px; }
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-layout">
+        <!-- Левая панель -->
+        <aside class="folders-panel">
+            <div id="home-folder" class="folder-card" data-id="home">
+                <span class="folder-icon material-symbols-outlined">home</span>
+                <span class="folder-name">Главная</span>
+            </div>
+            <div id="folders-container" class="folders-list"></div>
+            <div class="folders-footer">
+                <div id="settings-folder" class="folder-card" data-id="settings">
+                    <span class="folder-icon material-symbols-outlined">settings</span>
+                    <span class="folder-name">Настройки</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Правая область -->
+        <div class="right-panel">
+            <!-- Панель закладок -->
+            <div id="bookmarks-panel" class="panel">
+                <h3 id="current-folder-title" class="current-folder-title">Главная</h3>
+                <div id="bookmarks-container" class="bookmarks-grid" data-columns="3" data-size="standard"></div>
+                <div id="load-more-indicator" class="load-more-indicator hidden">
+                    <div class="spinner"></div>
+                    <span>Загрузка...</span>
+                </div>
+            </div>
+
+            <!-- Панель настроек -->
+            <div id="settings-panel" class="panel hidden">
+                <h3 class="settings-title">Настройки</h3>
+
+                <div class="settings-section">
+                    <span class="settings-section-label">Сортировка</span>
+                    <div class="settings-options">
+                        <button data-sort="default" class="settings-option">По умолчанию</button>
+                        <button data-sort="name" class="settings-option">По имени</button>
+                        <button data-sort="date" class="settings-option">По дате</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <span class="settings-section-label">Колонки</span>
+                    <div class="settings-options cols">
+                        <button data-columns="2" class="settings-option cols-btn">2</button>
+                        <button data-columns="3" class="settings-option cols-btn">3</button>
+                        <button data-columns="4" class="settings-option cols-btn">4</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <span class="settings-section-label">Размер карточек</span>
+                    <div class="settings-options">
+                        <button data-size="compact" class="settings-option">Компактный</button>
+                        <button data-size="standard" class="settings-option">Стандартный</button>
+                        <button data-size="large" class="settings-option">Крупный</button>
+                    </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <button id="open-bookmarks-manager" class="settings-link-btn">
+                    <span class="material-symbols-outlined">bookmark_manager</span>
+                    <span>Диспетчер закладок</span>
+                    <span class="material-symbols-outlined link-arrow">open_in_new</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Шаблоны для карточек -->
+    <template id="folder-template">
+        <div class="folder-card">
+            <span class="folder-icon material-symbols-outlined">folder</span>
+            <span class="folder-name"></span>
+        </div>
+    </template>
+
+    <template id="bookmark-template">
+        <div class="bookmark-card">
+            <div class="favicon-container">
+                <img src="" alt="" loading="lazy">
+            </div>
+            <a class="bookmark-link" href="#"></a>
+        </div>
+    </template>
+
+    <!-- Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1" />
+
+    <script src="script.js" defer></script>
+</body>
+</html>
