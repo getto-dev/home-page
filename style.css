@@ -1,5 +1,5 @@
 /* ============================================
-   ЗАКЛАДКИ — Версия 5
+   ЗАКЛАДКИ — Версия 6 с режимом редактирования
    ============================================ */
 
 :root {
@@ -18,6 +18,9 @@
     --btn-hover: #e5e5ea;
     --btn-active: #1d1d1f;
     --btn-active-text: #ffffff;
+    --danger-color: #ff3b30;
+    --primary-color: #007aff;
+    --edit-mode-color: #ff9500;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,6 +38,9 @@
         --btn-hover: #48484a;
         --btn-active: #f5f5f7;
         --btn-active-text: #1c1c1e;
+        --danger-color: #ff453a;
+        --primary-color: #0a84ff;
+        --edit-mode-color: #ff9f0a;
     }
 }
 
@@ -225,14 +231,63 @@ body {
     align-items: center;
     gap: 0.9rem;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
     will-change: transform;
+    position: relative;
 }
 
 .bookmark-card:hover,
 .subfolder-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--card-hover-shadow);
+}
+
+/* Режим редактирования - стили карточек */
+.bookmarks-grid.edit-mode .bookmark-card,
+.bookmarks-grid.edit-mode .subfolder-card {
+    cursor: grab;
+    border-style: dashed;
+}
+
+.bookmarks-grid.edit-mode .bookmark-card:active,
+.bookmarks-grid.edit-mode .subfolder-card:active {
+    cursor: grabbing;
+}
+
+.bookmarks-grid.edit-mode .bookmark-card:hover,
+.bookmarks-grid.edit-mode .subfolder-card:hover {
+    border-color: var(--edit-mode-color);
+}
+
+/* Drag handle */
+.drag-handle {
+    display: none;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    cursor: grab;
+}
+
+.bookmarks-grid.edit-mode .drag-handle {
+    display: block;
+}
+
+/* Перетаскивание */
+.bookmark-card.dragging,
+.subfolder-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.bookmark-card.drag-over,
+.subfolder-card.drag-over {
+    border-color: var(--primary-color);
+    background: rgba(0, 122, 255, 0.1);
+    transform: translateY(-4px);
 }
 
 .bookmark-link {
@@ -247,6 +302,7 @@ body {
     -webkit-box-orient: vertical;
     pointer-events: none;
     cursor: default;
+    flex: 1;
 }
 
 .favicon-container {
@@ -273,7 +329,7 @@ body {
 }
 
 /* ============================================
-   ПАНЕЛЬ НАСТРОЕК (ПО ЦЕНТРУ)
+   ПАНЕЛЬ НАСТРОЕК
    ============================================ */
 
 .panel {
@@ -386,6 +442,334 @@ body {
 .settings-link-btn .link-arrow {
     margin-left: auto;
     opacity: 0.6;
+}
+
+.settings-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+/* ============================================
+   TOGGLE SWITCH
+   ============================================ */
+
+.edit-mode-toggle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--btn-bg);
+    transition: 0.3s;
+    border-radius: 28px;
+    border: 1px solid var(--border-color);
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: var(--edit-mode-color);
+    border-color: var(--edit-mode-color);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+.toggle-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.toggle-switch input:checked ~ .toggle-label,
+.edit-mode-toggle:has(input:checked) .toggle-label {
+    color: var(--edit-mode-color);
+}
+
+/* ============================================
+   ИНДИКАТОР РЕЖИМА РЕДАКТИРОВАНИЯ
+   ============================================ */
+
+.edit-mode-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--edit-mode-color);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 20px rgba(255, 149, 0, 0.4);
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+}
+
+.edit-mode-indicator .material-symbols-outlined {
+    font-size: 20px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   КОНТЕКСТНОЕ МЕНЮ
+   ============================================ */
+
+.context-menu {
+    position: fixed;
+    background: var(--card-solid);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    padding: 0.5rem;
+    z-index: 2000;
+    min-width: 180px;
+    animation: contextFadeIn 0.15s ease;
+}
+
+@keyframes contextFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+}
+
+.context-menu-item:hover {
+    background: var(--btn-hover);
+}
+
+.context-menu-item.danger {
+    color: var(--danger-color);
+}
+
+.context-menu-item.danger:hover {
+    background: rgba(255, 59, 48, 0.1);
+}
+
+.context-menu-item .material-symbols-outlined {
+    font-size: 20px;
+    opacity: 0.8;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 0.5rem 0;
+}
+
+/* ============================================
+   МОДАЛЬНЫЕ ОКНА
+   ============================================ */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    position: relative;
+    background: var(--card-solid);
+    border-radius: 20px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.modal-field {
+    margin-bottom: 1.25rem;
+}
+
+.modal-field label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modal-field input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: var(--btn-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modal-field input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 0.875rem 1.25rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.modal-btn.cancel {
+    background: var(--btn-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.modal-btn.cancel:hover {
+    background: var(--btn-hover);
+}
+
+.modal-btn.save {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+}
+
+.modal-btn.save:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.modal-btn.delete {
+    background: var(--danger-color);
+    border: none;
+    color: white;
+}
+
+.modal-btn.delete:hover {
+    opacity: 0.9;
+}
+
+/* Delete modal */
+.delete-modal {
+    text-align: center;
+}
+
+.delete-modal .delete-icon {
+    font-size: 48px;
+    color: var(--danger-color);
+    margin-bottom: 1rem;
+}
+
+.delete-modal .modal-text {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
 }
 
 /* ============================================
@@ -501,6 +885,18 @@ body {
     .bookmarks-grid { 
         grid-template-columns: 1fr !important; 
     }
+    
+    .modal-content {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    
+    .edit-mode-indicator {
+        bottom: 12px;
+        right: 12px;
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
 }
 
 /* ============================================
@@ -509,8 +905,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
     .bookmark-card, .subfolder-card, .folder-card,
-    .settings-option, .settings-link-btn {
+    .settings-option, .settings-link-btn,
+    .context-menu, .modal-content, .edit-mode-indicator {
         transition: none;
+        animation: none;
     }
     .bookmark-card:hover, .subfolder-card:hover,
     .folder-card:hover, .settings-link-btn:hover {

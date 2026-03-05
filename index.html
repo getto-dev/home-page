@@ -90,6 +90,20 @@
                 <h3 class="settings-title">Настройки</h3>
 
                 <div class="settings-section">
+                    <span class="settings-section-label">Режим редактирования</span>
+                    <div class="edit-mode-toggle">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="edit-mode-toggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="toggle-label" id="edit-mode-label">Выключен</span>
+                    </div>
+                    <p class="settings-hint">Включите для перетаскивания и редактирования закладок</p>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-section">
                     <span class="settings-section-label">Сортировка</span>
                     <div class="settings-options">
                         <button data-sort="default" class="settings-option">По умолчанию</button>
@@ -136,13 +150,71 @@
     </template>
 
     <template id="bookmark-template">
-        <div class="bookmark-card">
+        <div class="bookmark-card" draggable="false">
             <div class="favicon-container">
                 <img src="" alt="" loading="lazy">
             </div>
             <a class="bookmark-link" href="#"></a>
+            <span class="drag-handle material-symbols-outlined">drag_pan</span>
         </div>
     </template>
+
+    <!-- Контекстное меню -->
+    <div id="context-menu" class="context-menu hidden">
+        <button class="context-menu-item" data-action="rename">
+            <span class="material-symbols-outlined">edit</span>
+            <span>Переименовать</span>
+        </button>
+        <button class="context-menu-item" data-action="edit-url">
+            <span class="material-symbols-outlined">link</span>
+            <span>Изменить URL</span>
+        </button>
+        <div class="context-menu-divider"></div>
+        <button class="context-menu-item danger" data-action="delete">
+            <span class="material-symbols-outlined">delete</span>
+            <span>Удалить</span>
+        </button>
+    </div>
+
+    <!-- Модальное окно редактирования -->
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h3 class="modal-title" id="modal-title">Редактирование</h3>
+            <div class="modal-field">
+                <label for="edit-name">Название</label>
+                <input type="text" id="edit-name" placeholder="Название закладки">
+            </div>
+            <div class="modal-field" id="url-field">
+                <label for="edit-url">URL</label>
+                <input type="url" id="edit-url" placeholder="https://example.com">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="modal-cancel">Отмена</button>
+                <button class="modal-btn save" id="modal-save">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления -->
+    <div id="delete-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content delete-modal">
+            <span class="material-symbols-outlined delete-icon">warning</span>
+            <h3 class="modal-title">Удалить закладку?</h3>
+            <p class="modal-text" id="delete-bookmark-name">Название закладки</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="delete-cancel">Отмена</button>
+                <button class="modal-btn delete" id="delete-confirm">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Индикатор режима редактирования -->
+    <div id="edit-mode-indicator" class="edit-mode-indicator hidden">
+        <span class="material-symbols-outlined">edit</span>
+        <span>Режим редактирования</span>
+    </div>
 
     <!-- Material Symbols -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1" />
