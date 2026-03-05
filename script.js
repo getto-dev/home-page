@@ -1,5 +1,5 @@
 // ============================================
-// ЗАКЛАДКИ — Версия 6 с режимом редактирования
+// ЗАКЛАДКИ — Оптимизированная версия v3
 // ============================================
 
 // --- Состояние ---
@@ -11,9 +11,6 @@ let sortMode = 'default';
 let columns = 3;
 let cardSize = 'standard';
 let currentBookmarkNode = null;
-let editMode = false;
-let draggedElement = null;
-let draggedBookmarkId = null;
 
 // --- Оптимизация: Виртуализация ---
 const VIRTUALIZATION_CHUNK_SIZE = 50;
@@ -32,12 +29,6 @@ const dom = {
     homeFolder: document.getElementById('home-folder'),
     settingsFolder: document.getElementById('settings-folder'),
     loadMoreIndicator: document.getElementById('load-more-indicator'),
-    editModeToggle: document.getElementById('edit-mode-toggle'),
-    editModeLabel: document.getElementById('edit-mode-label'),
-    editModeIndicator: document.getElementById('edit-mode-indicator'),
-    contextMenu: document.getElementById('context-menu'),
-    editModal: document.getElementById('edit-modal'),
-    deleteModal: document.getElementById('delete-modal'),
 };
 
 // --- Шаблоны ---
@@ -94,11 +85,6 @@ function loadMoreBookmarks() {
         }
 
         isLoading = false;
-        
-        // Применяем режим редактирования к новым элементам
-        if (editMode) {
-            updateEditModeStyles();
-        }
     });
 }
 
@@ -133,20 +119,12 @@ function loadSettings() {
         cardSize = savedSize;
         dom.bookmarksContainer.dataset.size = cardSize;
     }
-    
-    const savedEditMode = localStorage.getItem('editMode');
-    if (savedEditMode === 'true') {
-        editMode = true;
-        dom.editModeToggle.checked = true;
-        updateEditModeUI();
-    }
 }
 
 function saveSettings() {
     localStorage.setItem('bookmarkColumns', columns);
     localStorage.setItem('bookmarkSort', sortMode);
     localStorage.setItem('bookmarkCardSize', cardSize);
-    localStorage.setItem('editMode', editMode);
 }
 
 // --- Подсветка активных кнопок в настройках ---
@@ -162,243 +140,7 @@ function updateSettingsButtons() {
     });
 }
 
-// ============================================
-// РЕЖИМ РЕДАКТИРОВАНИЯ
-// ============================================
-
-function toggleEditMode() {
-    editMode = dom.editModeToggle.checked;
-    saveSettings();
-    updateEditModeUI();
-}
-
-function updateEditModeUI() {
-    dom.editModeLabel.textContent = editMode ? 'Включён' : 'Выключен';
-    
-    if (editMode) {
-        dom.editModeIndicator.classList.remove('hidden');
-        dom.bookmarksContainer.classList.add('edit-mode');
-    } else {
-        dom.editModeIndicator.classList.add('hidden');
-        dom.bookmarksContainer.classList.remove('edit-mode');
-    }
-}
-
-function updateEditModeStyles() {
-    if (editMode) {
-        dom.bookmarksContainer.classList.add('edit-mode');
-    } else {
-        dom.bookmarksContainer.classList.remove('edit-mode');
-    }
-}
-
-// ============================================
-// DRAG AND DROP
-// ============================================
-
-function initDragAndDrop(card, bookmarkId) {
-    card.setAttribute('draggable', 'true');
-    card.dataset.bookmarkId = bookmarkId;
-
-    card.addEventListener('dragstart', (e) => {
-        if (!editMode) {
-            e.preventDefault();
-            return;
-        }
-        draggedElement = card;
-        draggedBookmarkId = bookmarkId;
-        card.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', bookmarkId);
-    });
-
-    card.addEventListener('dragend', () => {
-        card.classList.remove('dragging');
-        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-        draggedElement = null;
-        draggedBookmarkId = null;
-    });
-
-    card.addEventListener('dragover', (e) => {
-        if (!editMode || !draggedElement || draggedElement === card) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        card.classList.add('drag-over');
-    });
-
-    card.addEventListener('dragleave', () => {
-        card.classList.remove('drag-over');
-    });
-
-    card.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        card.classList.remove('drag-over');
-        
-        if (!editMode || !draggedBookmarkId || draggedElement === card) return;
-
-        const targetId = card.dataset.bookmarkId;
-        if (!targetId) return;
-
-        try {
-            // Получаем информацию о целевой закладке
-            const targetBookmark = bookmarksMap.get(targetId);
-            const draggedBookmark = bookmarksMap.get(draggedBookmarkId);
-            
-            if (!targetBookmark || !draggedBookmark) return;
-
-            // Перемещаем закладку в ту же папку, после целевой
-            await chrome.bookmarks.move(draggedBookmarkId, {
-                parentId: targetBookmark.parentId,
-                index: targetBookmark.index + 1
-            });
-
-            // Обновляем отображение
-            await refreshBookmarks();
-        } catch (err) {
-            console.error('Ошибка при перемещении:', err);
-        }
-    });
-}
-
-async function refreshBookmarks() {
-    // Обновляем карту закладок
-    bookmarksMap.clear();
-    const tree = await chrome.bookmarks.getTree();
-    const root = tree[0];
-    
-    const walk = node => {
-        bookmarksMap.set(node.id, node);
-        node.children?.forEach(walk);
-    };
-    walk(root);
-
-    // Обновляем отображение текущей папки
-    if (currentFolderId) {
-        showFolderContent(currentFolderId);
-    }
-}
-
-// ============================================
-// КОНТЕКСТНОЕ МЕНЮ
-// ============================================
-
-function showContextMenu(x, y, bookmark) {
-    currentBookmarkNode = bookmark;
-    
-    // Позиционирование меню
-    const menu = dom.contextMenu;
-    menu.classList.remove('hidden');
-    
-    // Корректировка позиции, чтобы меню не выходило за границы экрана
-    const menuRect = menu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    let posX = x;
-    let posY = y;
-    
-    if (x + menuRect.width > viewportWidth) {
-        posX = viewportWidth - menuRect.width - 10;
-    }
-    if (y + menuRect.height > viewportHeight) {
-        posY = viewportHeight - menuRect.height - 10;
-    }
-    
-    menu.style.left = posX + 'px';
-    menu.style.top = posY + 'px';
-}
-
-function hideContextMenu() {
-    dom.contextMenu.classList.add('hidden');
-    currentBookmarkNode = null;
-}
-
-// ============================================
-// МОДАЛЬНЫЕ ОКНА
-// ============================================
-
-function showEditModal(mode, bookmark) {
-    const modal = dom.editModal;
-    const title = document.getElementById('modal-title');
-    const nameInput = document.getElementById('edit-name');
-    const urlInput = document.getElementById('edit-url');
-    const urlField = document.getElementById('url-field');
-    
-    currentBookmarkNode = bookmark;
-    
-    if (mode === 'rename') {
-        title.textContent = 'Переименовать';
-        urlField.style.display = 'none';
-        nameInput.value = bookmark.title || '';
-    } else {
-        title.textContent = 'Изменить URL';
-        urlField.style.display = 'block';
-        nameInput.value = bookmark.title || '';
-        urlInput.value = bookmark.url || '';
-    }
-    
-    modal.classList.remove('hidden');
-    nameInput.focus();
-}
-
-function hideEditModal() {
-    dom.editModal.classList.add('hidden');
-    currentBookmarkNode = null;
-}
-
-function showDeleteModal(bookmark) {
-    currentBookmarkNode = bookmark;
-    document.getElementById('delete-bookmark-name').textContent = bookmark.title || 'Без названия';
-    dom.deleteModal.classList.remove('hidden');
-}
-
-function hideDeleteModal() {
-    dom.deleteModal.classList.add('hidden');
-    currentBookmarkNode = null;
-}
-
-async function saveBookmarkChanges() {
-    if (!currentBookmarkNode) return;
-    
-    const name = document.getElementById('edit-name').value.trim();
-    const url = document.getElementById('edit-url').value.trim();
-    
-    try {
-        const changes = {};
-        if (name) changes.title = name;
-        if (url && document.getElementById('url-field').style.display !== 'none') {
-            changes.url = url;
-        }
-        
-        if (Object.keys(changes).length > 0) {
-            await chrome.bookmarks.update(currentBookmarkNode.id, changes);
-            await refreshBookmarks();
-        }
-        
-        hideEditModal();
-    } catch (err) {
-        console.error('Ошибка при сохранении:', err);
-        alert('Ошибка при сохранении: ' + err.message);
-    }
-}
-
-async function deleteBookmark() {
-    if (!currentBookmarkNode) return;
-    
-    try {
-        await chrome.bookmarks.remove(currentBookmarkNode.id);
-        await refreshBookmarks();
-        hideDeleteModal();
-    } catch (err) {
-        console.error('Ошибка при удалении:', err);
-        alert('Ошибка при удалении: ' + err.message);
-    }
-}
-
-// ============================================
-// СОЗДАНИЕ КАРТОЧЕК
-// ============================================
-
+// --- Создание карточек из шаблонов ---
 function createFolderCard(folderNode, isLeft = true) {
     const clone = folderTemplate.content.cloneNode(true);
     const card = clone.querySelector('.folder-card');
@@ -434,7 +176,7 @@ function createBookmarkCard(bookmark) {
 
     const img = card.querySelector('img');
     
-    // Chrome favicon API
+    // Chrome favicon API — самый надёжный источник
     const faviconUrl = `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(bookmark.url)}&size=32`;
     img.src = faviconUrl;
 
@@ -447,16 +189,9 @@ function createBookmarkCard(bookmark) {
         card.querySelector('.favicon-container').appendChild(fallback);
     };
 
-    // Инициализация drag and drop
-    initDragAndDrop(card, bookmark.id);
-
-    // Левый клик — открыть в текущей вкладке (только если не в режиме редактирования)
+    // Левый клик — открыть в текущей вкладке
     card.addEventListener('click', (e) => {
         if (e.button !== 0) return;
-        
-        // В режиме редактирования не открываем ссылку
-        if (editMode) return;
-        
         e.preventDefault();
         if (!bookmark.url) return;
 
@@ -481,16 +216,14 @@ function createBookmarkCard(bookmark) {
     // Контекстное меню (правый клик)
     card.addEventListener('contextmenu', (e) => {
         e.preventDefault();
-        showContextMenu(e.pageX, e.pageY, bookmark);
+        currentBookmarkNode = bookmark;
+        showContextMenu(e.pageX, e.pageY);
     });
 
     return card;
 }
 
-// ============================================
-// ОТОБРАЖЕНИЕ СОДЕРЖИМОГО ПАПКИ
-// ============================================
-
+// --- Отображение содержимого папки ---
 function showFolderContent(folderId) {
     const folderNode = bookmarksMap.get(folderId);
     if (!folderNode) return;
@@ -536,9 +269,6 @@ function showFolderContent(folderId) {
         return;
     }
 
-    // Применяем класс edit-mode если нужно
-    updateEditModeStyles();
-    
     initScrollObserver();
     loadMoreBookmarks();
 }
@@ -560,15 +290,17 @@ function showSettingsPanel() {
     dom.settingsPanel.classList.remove('hidden');
 }
 
+// --- Контекстное меню ---
+function showContextMenu(x, y) {
+    console.log('Context menu:', x, y);
+}
+
 // --- Открытие диспетчера закладок Chrome ---
 function openBookmarksManager() {
     chrome.tabs.create({ url: 'chrome://bookmarks' });
 }
 
-// ============================================
-// ИНИЦИАЛИЗАЦИЯ
-// ============================================
-
+// --- Инициализация ---
 async function init() {
     showSkeleton();
     loadSettings();
@@ -597,11 +329,7 @@ async function init() {
     }
 }
 
-// ============================================
-// ОБРАБОТЧИКИ СОБЫТИЙ
-// ============================================
-
-// Папки
+// --- Обработчики событий ---
 dom.homeFolder.addEventListener('click', () => {
     showBookmarksPanel();
     document.querySelectorAll('.folder-card').forEach(c => c.classList.remove('active'));
@@ -615,14 +343,13 @@ dom.settingsFolder.addEventListener('click', () => {
     dom.settingsFolder.classList.add('active');
 });
 
-// Режим редактирования
-dom.editModeToggle.addEventListener('change', toggleEditMode);
+// ИСПРАВЛЕНО: Используем e.currentTarget вместо e.target
+// e.currentTarget всегда указывает на элемент, к которому привязан обработчик
 
-// Настройки
 document.querySelectorAll('[data-sort]').forEach(btn => {
     btn.addEventListener('click', e => {
         const value = e.currentTarget.dataset.sort;
-        if (!value) return;
+        if (!value) return; // Защита от пустых значений
         sortMode = value;
         saveSettings();
         updateSettingsButtons();
@@ -652,69 +379,6 @@ document.querySelectorAll('[data-size]').forEach(btn => {
     });
 });
 
-// Диспетчер закладок
 document.getElementById('open-bookmarks-manager')?.addEventListener('click', openBookmarksManager);
 
-// Контекстное меню
-document.querySelectorAll('.context-menu-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-        const action = e.currentTarget.dataset.action;
-        hideContextMenu();
-        
-        if (!currentBookmarkNode) return;
-        
-        switch (action) {
-            case 'rename':
-                showEditModal('rename', currentBookmarkNode);
-                break;
-            case 'edit-url':
-                showEditModal('edit-url', currentBookmarkNode);
-                break;
-            case 'delete':
-                showDeleteModal(currentBookmarkNode);
-                break;
-        }
-    });
-});
-
-// Закрытие контекстного меню при клике вне его
-document.addEventListener('click', (e) => {
-    if (!dom.contextMenu.contains(e.target)) {
-        hideContextMenu();
-    }
-});
-
-// Модальное окно редактирования
-document.getElementById('modal-cancel')?.addEventListener('click', hideEditModal);
-document.getElementById('modal-save')?.addEventListener('click', saveBookmarkChanges);
-dom.editModal.querySelector('.modal-backdrop')?.addEventListener('click', hideEditModal);
-
-// Модальное окно удаления
-document.getElementById('delete-cancel')?.addEventListener('click', hideDeleteModal);
-document.getElementById('delete-confirm')?.addEventListener('click', deleteBookmark);
-dom.deleteModal.querySelector('.modal-backdrop')?.addEventListener('click', hideDeleteModal);
-
-// Закрытие модальных окон по Escape
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        hideContextMenu();
-        hideEditModal();
-        hideDeleteModal();
-    }
-});
-
-// Enter в модальном окне редактирования
-document.getElementById('edit-name')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        saveBookmarkChanges();
-    }
-});
-
-document.getElementById('edit-url')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-        saveBookmarkChanges();
-    }
-});
-
-// Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', init);
