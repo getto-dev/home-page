@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru" style="color-scheme: light dark;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Закладки</title>
+  <meta name="description" content="Быстрые закладки на новой вкладке">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+  
+  <!-- Критические стили inline для мгновенного отображения скелетона -->
+  <style>
+    :root {
+      --skeleton-bg: linear-gradient(90deg, rgba(200,200,200,0.3) 25%, rgba(200,200,200,0.5) 50%, rgba(200,200,200,0.3) 75%);
+      --skeleton-size: 200% 100%;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --skeleton-bg: linear-gradient(90deg, rgba(100,100,100,0.3) 25%, rgba(100,100,100,0.5) 50%, rgba(100,100,100,0.3) 75%);
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    .hidden { display: none !important; }
+    .skeleton-card {
+      background: var(--skeleton-bg);
+      background-size: var(--skeleton-size);
+      animation: shimmer 1.5s infinite;
+      border-radius: 14px;
+      height: 60px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1&display=block">
+</head>
+<body>
+  <!-- Основной layout — семантически без лишних div -->
+  <main class="main-layout">
+    
+    <!-- Левая навигационная панель -->
+    <nav class="folders-panel" aria-label="Папки закладок">
+      
+      <!-- Кнопка "Главная" -->
+      <button type="button" class="folder-card active" id="home-folder" aria-pressed="true">
+        <span class="material-symbols-outlined" aria-hidden="true">home</span>
+        <span class="folder-name">Главная</span>
+      </button>
+      
+      <!-- Контейнер для папок — управляется через event delegation -->
+      <section id="folders-container" class="folders-list" aria-label="Список папок"></section>
+      
+      <!-- Футер с настройками -->
+      <footer class="folders-footer">
+        <button type="button" class="folder-card" id="settings-folder" aria-pressed="false">
+          <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+          <span class="folder-name">Настройки</span>
+        </button>
+      </footer>
+      
+    </nav>
+
+    <!-- Правая область контента -->
+    <section class="right-panel">
+      
+      <!-- Панель закладок -->
+      <article id="bookmarks-panel" class="panel" aria-label="Закладки">
+        <h1 id="current-folder-title" class="current-folder-title">Главная</h1>
+        
+        <!-- Grid с закладками — одна точка для event delegation -->
+        <div id="bookmarks-container" 
+             class="bookmarks-grid" 
+             data-columns="3" 
+             data-size="standard"
+             role="list"
+             aria-label="Список закладок">
+          
+          <!-- Скелетон загрузки -->
+          <div class="skeleton-card" aria-hidden="true"></div>
+          <div class="skeleton-card" aria-hidden="true"></div>
+          <div class="skeleton-card" aria-hidden="true"></div>
+          <div class="skeleton-card" aria-hidden="true"></div>
+          <div class="skeleton-card" aria-hidden="true"></div>
+          <div class="skeleton-card" aria-hidden="true"></div>
+          
+        </div>
+        
+        <!-- Индикатор подгрузки -->
+        <div id="load-more-indicator" class="load-more-indicator hidden" aria-live="polite">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Загрузка...</span>
+        </div>
+        
+      </article>
+
+      <!-- Панель настроек -->
+      <article id="settings-panel" class="panel hidden" aria-label="Настройки">
+        <h1 class="settings-title">Настройки</h1>
+
+        <!-- Секция сортировки -->
+        <fieldset class="settings-section">
+          <legend class="settings-section-label">Сортировка</legend>
+          <div class="settings-options" role="radiogroup" aria-label="Режим сортировки">
+            <button type="button" class="settings-option" data-sort="default" role="radio" aria-checked="true">По умолчанию</button>
+            <button type="button" class="settings-option" data-sort="name" role="radio" aria-checked="false">По имени</button>
+            <button type="button" class="settings-option" data-sort="date" role="radio" aria-checked="false">По дате</button>
+          </div>
+        </fieldset>
+
+        <!-- Секция колонок -->
+        <fieldset class="settings-section">
+          <legend class="settings-section-label">Колонки</legend>
+          <div class="settings-options cols" role="radiogroup" aria-label="Количество колонок">
+            <button type="button" class="settings-option cols-btn" data-columns="2" role="radio" aria-checked="false">2</button>
+            <button type="button" class="settings-option cols-btn active-btn" data-columns="3" role="radio" aria-checked="true">3</button>
+            <button type="button" class="settings-option cols-btn" data-columns="4" role="radio" aria-checked="false">4</button>
+          </div>
+        </fieldset>
+
+        <!-- Секция размера -->
+        <fieldset class="settings-section">
+          <legend class="settings-section-label">Размер карточек</legend>
+          <div class="settings-options" role="radiogroup" aria-label="Размер карточек">
+            <button type="button" class="settings-option" data-size="compact" role="radio" aria-checked="false">Компактный</button>
+            <button type="button" class="settings-option active-btn" data-size="standard" role="radio" aria-checked="true">Стандартный</button>
+            <button type="button" class="settings-option" data-size="large" role="radio" aria-checked="false">Крупный</button>
+          </div>
+        </fieldset>
+
+        <hr class="settings-divider">
+
+        <!-- Ссылка на диспетчер -->
+        <button type="button" id="open-bookmarks-manager" class="settings-link-btn">
+          <span class="material-symbols-outlined" aria-hidden="true">bookmark_manager</span>
+          <span>Диспетчер закладок</span>
+          <span class="material-symbols-outlined link-arrow" aria-hidden="true">open_in_new</span>
+        </button>
+        
+      </article>
+      
+    </section>
+    
+  </main>
+
+  <!-- Шаблоны — вне DOM-дерева для эффективного клонирования -->
+  <template id="folder-template">
+    <button type="button" class="folder-card" data-folder-id="">
+      <span class="material-symbols-outlined" aria-hidden="true">folder</span>
+      <span class="folder-name"></span>
+    </button>
+  </template>
+
+  <template id="bookmark-template">
+    <a class="bookmark-card" data-bookmark-id="" data-url="" href="" role="listitem">
+      <span class="favicon-container" aria-hidden="true">
+        <img src="" alt="" loading="lazy" decoding="async">
+      </span>
+      <span class="bookmark-link"></span>
+    </a>
+  </template>
+
+  <template id="subfolder-template">
+    <a class="bookmark-card subfolder-card" data-folder-id="" href="#" role="listitem">
+      <span class="favicon-container">
+        <span class="material-symbols-outlined folder-icon-sm" aria-hidden="true">folder</span>
+      </span>
+      <span class="bookmark-link"></span>
+    </a>
+  </template>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

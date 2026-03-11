@@ -1,0 +1,11 @@
+{
+  "version": "12.0",
+  "lastUpdate": "2025-01-19",
+  "changes": [
+    "Added proper error handling for Chrome APIs",
+    "Fixed race conditions in scrollObserver",
+    "Added URL validation for XSS protection",
+    "Added cleanup on page unload",
+    "Improved settings buttons caching"
+  ]
+}
