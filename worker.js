@@ -6,6 +6,9 @@ const bookmarksCache = {
   TTL: 30000
 };
 
+let loadPromise = null;
+let isLoading = false;
+
 // ============================================
 // ПОСТРОЕНИЕ КАРТЫ ЗАКЛАДОК
 // ============================================
@@ -32,37 +35,53 @@ async function loadBookmarksTree() {
     };
   }
 
+  // Предотвращаем дублирование запросов
+  if (loadPromise) return loadPromise;
+
   // Проверяем API
   if (!chrome?.bookmarks?.getTree) {
     throw new Error('Chrome bookmarks API not available');
   }
 
-  const tree = await chrome.bookmarks.getTree();
+  isLoading = true;
   
-  if (!tree?.length) {
-    throw new Error('Invalid bookmarks tree structure');
-  }
+  loadPromise = (async () => {
+    try {
+      const tree = await chrome.bookmarks.getTree();
+      
+      if (!tree?.length) {
+        throw new Error('Invalid bookmarks tree structure');
+      }
+      
+      const root = tree[0];
+      
+      // Полная очистка перед загрузкой
+      bookmarksCache.map.clear();
+      bookmarksCache.rootFolders = [];
+      bookmarksCache.bookmarksBarId = null;
+      
+      buildBookmarksMap(root);
+      
+      bookmarksCache.bookmarksBarId = root.children?.[0]?.id ?? null;
+      const barNode = bookmarksCache.bookmarksBarId 
+        ? bookmarksCache.map.get(bookmarksCache.bookmarksBarId) 
+        : null;
+      
+      bookmarksCache.rootFolders = barNode?.children?.filter(c => !c.url) ?? [];
+      bookmarksCache.lastUpdate = Date.now();
+      
+      return {
+        map: Object.fromEntries(bookmarksCache.map),
+        rootFolders: bookmarksCache.rootFolders,
+        bookmarksBarId: bookmarksCache.bookmarksBarId
+      };
+    } finally {
+      isLoading = false;
+      loadPromise = null;
+    }
+  })();
   
-  const root = tree[0];
-  
-  // Очищаем и строим карту
-  bookmarksCache.map.clear();
-  buildBookmarksMap(root);
-  
-  // Извлекаем данные
-  bookmarksCache.bookmarksBarId = root.children?.[0]?.id ?? null;
-  const barNode = bookmarksCache.bookmarksBarId 
-    ? bookmarksCache.map.get(bookmarksCache.bookmarksBarId) 
-    : null;
-  
-  bookmarksCache.rootFolders = barNode?.children?.filter(c => !c.url) ?? [];
-  bookmarksCache.lastUpdate = now;
-  
-  return {
-    map: Object.fromEntries(bookmarksCache.map),
-    rootFolders: bookmarksCache.rootFolders,
-    bookmarksBarId: bookmarksCache.bookmarksBarId
-  };
+  return loadPromise;
 }
 
 // ============================================
@@ -79,7 +98,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     loadBookmarksTree()
       .then(data => sendResponse({ success: true, data }))
       .catch(error => sendResponse({ success: false, error: error?.message ?? 'Unknown error' }));
-    return true; // Async response
+    return true;
   }
   
   sendResponse({ success: false, error: 'Unknown message type' });
@@ -90,7 +109,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // ИНВАЛИДАЦИЯ КЭША
 // ============================================
 
-const invalidateCache = () => { bookmarksCache.lastUpdate = 0; };
+const invalidateCache = () => {
+  if (!isLoading) {
+    bookmarksCache.map.clear();
+    bookmarksCache.rootFolders = [];
+    bookmarksCache.bookmarksBarId = null;
+    bookmarksCache.lastUpdate = 0;
+  }
+};
 
 // Безопасное добавление listeners
 [
@@ -110,5 +136,14 @@ chrome.runtime.onInstalled?.addListener(async () => {
     console.log('🚀 Service Worker initialized');
   } catch (error) {
     console.error('Service Worker initialization failed:', error);
+  }
+});
+
+// Обработка пробуждения Service Worker
+chrome.runtime.onStartup?.addListener(async () => {
+  try {
+    await loadBookmarksTree();
+  } catch (error) {
+    console.error('Service Worker startup failed:', error);
   }
 });

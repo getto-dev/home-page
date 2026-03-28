@@ -14,6 +14,8 @@ const DEFAULT_SETTINGS = {
   cardSize: 'standard'
 };
 
+const BLOCKED_PROTOCOLS = ['javascript:', 'data:', 'vbscript:'];
+
 // ============================================
 // СОСТОЯНИЕ ПРИЛОЖЕНИЯ
 // ============================================
@@ -76,6 +78,8 @@ const cloneTemplate = template => {
 
 const isValidUrl = url => {
   if (!url || typeof url !== 'string') return false;
+  const lower = url.toLowerCase().trim();
+  if (BLOCKED_PROTOCOLS.some(p => lower.startsWith(p))) return false;
   try {
     const { protocol } = new URL(url);
     return ['http:', 'https:', 'ftp:'].includes(protocol);
@@ -376,7 +380,13 @@ function openBookmarkUrl(url) {
   }
   
   chrome.tabs.getCurrent(tab => {
-    if (chrome.runtime?.lastError || !tab?.id) {
+    if (chrome.runtime?.lastError) {
+      console.warn('Tab error:', chrome.runtime.lastError.message);
+      window.location.href = url;
+      return;
+    }
+    
+    if (!tab?.id) {
       window.location.href = url;
       return;
     }
